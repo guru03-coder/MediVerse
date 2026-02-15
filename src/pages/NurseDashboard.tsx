@@ -1,7 +1,8 @@
 import { motion, useTransform, useMotionValue, useSpring, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
-    Users, Clock, AlertTriangle,
-    Heart, Brain, Bone, ArrowRight, Bell
+    Users, Clock, AlertTriangle, Activity,
+    Heart, Brain, Bone, ArrowRight, Bell, LogOut
 } from 'lucide-react';
 import { GridBackground } from '../components/ui/GridBackground';
 
@@ -9,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { assessPatient, getRandomSymptoms, getRandomVitals, type TriagePrediction } from '../services/triageSdk';
 
 export function NurseDashboard() {
+    const navigate = useNavigate();
     // State for Patients
     const [patients, setPatients] = useState<any[]>([]);
     const [isSimulating, setIsSimulating] = useState(false);
@@ -50,6 +52,35 @@ export function NurseDashboard() {
         }
     };
 
+    // State for Availability
+    const [deptAvailability, setDeptAvailability] = useState<Record<string, boolean>>({});
+
+    // Fetch initial availability
+    useEffect(() => {
+        fetch('http://localhost:8000/availability')
+            .then(res => res.json())
+            .then(data => setDeptAvailability(data))
+            .catch(err => console.error("Failed to load availability:", err));
+    }, []);
+
+    const toggleAvailability = async (dept: string) => {
+        const newState = !deptAvailability[dept];
+        // Optimistic update
+        setDeptAvailability(prev => ({ ...prev, [dept]: newState }));
+
+        try {
+            await fetch('http://localhost:8000/availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dept, is_available: newState })
+            });
+        } catch (error) {
+            console.error("Failed to update availability:", error);
+            // Revert on failure
+            setDeptAvailability(prev => ({ ...prev, [dept]: !newState }));
+        }
+    };
+
     const handleSimulatePatient = async () => {
         setIsSimulating(true);
         const symptoms = getRandomSymptoms();
@@ -62,7 +93,7 @@ export function NurseDashboard() {
             const newPatient = {
                 id: `P-${Math.floor(Math.random() * 1000)}`,
                 risk: prediction.riskLevel,
-                dept: prediction.recommendedDept,
+                dept: prediction.recommendedDept, // Now prediction includes dept
                 time: "Just now",
                 color: prediction.riskLevel === 'CRITICAL' ? 'red' : prediction.riskLevel === 'URGENT' ? 'amber' : 'emerald'
             };
@@ -106,8 +137,15 @@ export function NurseDashboard() {
                     <div className="w-8 h-8 rounded-full bg-slate-200 border border-slate-300 overflow-hidden cursor-pointer">
                         <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nurse" alt="Profile" />
                     </div>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="p-2 text-slate-400 hover:text-red-600 transition-colors flex items-center gap-2"
+                        title="Logout"
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
                 </div>
-            </motion.header>
+            </motion.header >
 
             <motion.main
                 variants={containerVariants}
@@ -190,35 +228,28 @@ export function NurseDashboard() {
                     {/* Left Column: Department Grid (2/3 width) */}
                     <div className="lg:col-span-2 space-y-6">
                         <motion.div variants={itemVariants} className="flex items-center justify-between mb-2">
-                            <h2 className="text-lg font-bold text-slate-800">Department Status</h2>
-                            <button className="text-medical-blue-600 text-sm font-medium hover:underline cursor-pointer">View All</button>
+                            <h2 className="text-lg font-bold text-slate-800">Department Availability</h2>
+                            <button className="text-medical-blue-600 text-sm font-medium hover:underline cursor-pointer">Manage All</button>
                         </motion.div>
 
                         <motion.div variants={itemVariants} className="space-y-4">
-                            <TiltCard>
-                                <DepartmentCardContent
-                                    name="Cardiology"
-                                    icon={<Heart className="w-6 h-6 text-rose-500" />}
-                                    status="available"
-                                    stats={{ docs: 4, wait: "5 min" }}
-                                />
-                            </TiltCard>
-                            <TiltCard>
-                                <DepartmentCardContent
-                                    name="Neurology"
-                                    icon={<Brain className="w-6 h-6 text-violet-500" />}
-                                    status="busy"
-                                    stats={{ docs: 2, waiting: "15 min", avgWait: "30 min" }}
-                                />
-                            </TiltCard>
-                            <TiltCard>
-                                <DepartmentCardContent
-                                    name="Orthopedics"
-                                    icon={<Bone className="w-6 h-6 text-slate-500" />}
-                                    status="critical"
-                                    stats={{ docs: 2, waiting: "7 min", avgWait: "30 min" }}
-                                />
-                            </TiltCard>
+                            {[
+                                { name: "Cardiology", icon: <Heart className="w-6 h-6 text-rose-500" />, stats: { docs: 4, wait: "5 min" } },
+                                { name: "Neurology", icon: <Brain className="w-6 h-6 text-violet-500" />, stats: { docs: 2, waiting: "15 min" } },
+                                { name: "Orthopedics", icon: <Bone className="w-6 h-6 text-slate-500" />, stats: { docs: 2, waiting: "7 min" } },
+                                { name: "General", icon: <Activity className="w-6 h-6 text-emerald-500" />, stats: { docs: 6, waiting: "2 min" } },
+                                { name: "Pediatrics", icon: <Users className="w-6 h-6 text-amber-500" />, stats: { docs: 3, waiting: "10 min" } }
+                            ].map((dept) => (
+                                <TiltCard key={dept.name}>
+                                    <DepartmentCardContent
+                                        name={dept.name}
+                                        icon={dept.icon}
+                                        status={deptAvailability[dept.name] !== false ? "available" : "busy"}
+                                        stats={dept.stats}
+                                        onToggle={() => toggleAvailability(dept.name)}
+                                    />
+                                </TiltCard>
+                            ))}
                         </motion.div>
                     </div>
 
@@ -388,48 +419,43 @@ function StatsCardContent({ title, value, subtitle, icon, trend, color, alert, s
     );
 }
 
-function DepartmentCardContent({ name, icon, status, stats }: any) {
-    const statusColors: any = {
-        available: { dot: "bg-emerald-500", border: "border-slate-100", bg: "bg-white/60", ring: "bg-emerald-500/30" },
-        busy: { dot: "bg-amber-500", border: "border-amber-100", bg: "bg-amber-50/30", ring: "bg-amber-500/30" },
-        critical: { dot: "bg-red-500", border: "border-red-100", bg: "bg-red-50/30", ring: "bg-red-500/30" }
-    };
+// Renamed for clarity - internal content of the tilt card
+function DepartmentCardContent({ name, icon, status, stats, onToggle }: any) {
+    const isAvailable = status === "available";
 
     return (
-        <div
-            className={`group p-6 rounded-2xl backdrop-blur-sm border ${statusColors[status].border} ${statusColors[status].bg} shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all duration-300 cursor-pointer h-full relative overflow-hidden`}
-        >
-            {/* Gloss reflection */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:animate-[shimmer_1s_infinite] pointer-events-none" />
+        <div className={`p-4 md:p-5 rounded-2xl bg-white/60 backdrop-blur-sm border ${isAvailable ? 'border-white/60' : 'border-slate-200 bg-slate-50/80'} shadow-sm transition-all duration-300 group hover:shadow-md h-full flex items-center justify-between`}>
 
-            <div className="flex items-center gap-4 relative z-10">
-                <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-700">
+            <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${isAvailable ? 'bg-white shadow-sm' : 'bg-slate-200 opacity-50'}`}>
                     {icon}
                 </div>
                 <div>
-                    <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
-                        {name}
-                        <div className="relative flex items-center justify-center">
-                            <span className={`absolute inline-flex h-full w-full rounded-full ${statusColors[status].ring} animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] opacity-75`}></span>
-                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${statusColors[status].dot}`}></span>
-                        </div>
-                    </h3>
-                    <div className="flex items-center gap-3 text-sm text-slate-500 mt-1">
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {stats.docs} Doctors</span>
-                        {stats.waiting && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {stats.waiting} wait</span>}
+                    <h3 className="text-base font-bold text-slate-800">{name}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`w-2 h-2 rounded-full ${isAvailable ? 'bg-emerald-500 animate-[pulse_3s_infinite]' : 'bg-slate-400'}`}></span>
+                        <span className={`text-xs font-semibold uppercase tracking-wider ${isAvailable ? 'text-emerald-600' : 'text-slate-500'}`}>
+                            {isAvailable ? "Active" : "Unavailable"}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto relative z-10">
-                <div className="flex-1 md:flex-none">
-                    <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1 group-hover:text-medical-blue-500 transition-colors">Avg Wait</div>
-                    <div className="font-mono font-medium text-slate-700 bg-white/50 px-3 py-1 rounded-md border border-slate-200/50 group-hover:bg-cyan-50 group-hover:border-cyan-100 transition-colors">
-                        {stats.avgWait || stats.wait || "--"}
+            <div className="flex items-center gap-4">
+                {isAvailable && (
+                    <div className="text-right hidden sm:block">
+                        <div className="text-xs text-slate-400 font-medium uppercase">Est. Wait</div>
+                        <div className="font-mono text-sm font-bold text-slate-700">{stats.wait || stats.waiting || "--"}</div>
                     </div>
-                </div>
-                <button className="p-2 group-hover:bg-white rounded-lg transition-all text-slate-400 group-hover:text-medical-blue-600 opacity-50 group-hover:opacity-100 transform group-hover:translate-x-1">
-                    <ArrowRight className="w-4 h-4" />
+                )}
+
+                <button
+                    onClick={(e) => { e.stopPropagation(); onToggle(); }}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-medical-blue-500 ${isAvailable ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                >
+                    <span
+                        className={`block w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${isAvailable ? 'translate-x-7' : 'translate-x-1'}`}
+                    />
                 </button>
             </div>
         </div>

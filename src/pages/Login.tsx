@@ -17,9 +17,6 @@ export function Login() {
             </div>
 
             <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
                 className="relative z-10 w-full max-w-5xl bg-white/60 backdrop-blur-xl border border-white/40 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row"
             >
 
@@ -100,9 +97,9 @@ export function Login() {
                 <div className="w-full md:w-1/2 p-8 md:p-12 bg-slate-50/50 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-32 bg-green-100/50 rounded-full blur-3xl pointer-events-none transform translate-x-1/2 -translate-y-1/2" />
 
-                    <div className="relative z-10 h-full flex flex-col justify-center">
-                        <div className="mb-10 text-center">
-                            <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-green-600/20">
+                    <div className="relative z-10 h-full flex flex-col justify-end">
+                        <div className="mb-10">
+                            <div className="w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-green-600/20">
                                 <User className="w-8 h-8 text-white" />
                             </div>
                             <h2 className="text-2xl font-bold text-slate-900">Patient Quick Check-in</h2>
@@ -111,7 +108,7 @@ export function Login() {
 
                         <div className="space-y-6">
                             <div className="space-y-4">
-                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block text-center">Option A (Recommended)</label>
+
                                 <div className="relative group">
                                     <Smartphone className="absolute left-3 top-3.5 w-5 h-5 text-green-600/70" />
                                     <input
@@ -140,13 +137,12 @@ export function Login() {
                             </div>
 
                             <div className="pt-4">
-                                <VitalButton className="w-full bg-green-600 hover:bg-green-700 border-green-600 py-3.5 text-base shadow-green-600/20 text-white">
-                                    Continue as Patient
-                                    <ArrowRight className="w-4 h-4 ml-2" />
-                                </VitalButton>
-                                <p className="text-center text-xs text-slate-400 mt-4">
-                                    No password required for patients.
-                                </p>
+                                <Link to="/intake" className="w-full">
+                                    <VitalButton className="w-full bg-green-600 hover:bg-green-700 border-green-600 py-3.5 text-base shadow-green-600/20 text-white">
+                                        Continue as Patient
+                                        <ArrowRight className="w-4 h-4 ml-2" />
+                                    </VitalButton>
+                                </Link>
                             </div>
                         </div>
                     </div>

@@ -1,0 +1,101 @@
+Age,Blood Pressure,Heart Rate,Temperature,Gender,Symptoms,Risk
+30,141/88,109,101.8301857046212,Male,Severe Breathlessness,Low
+33,126/94,72,99.48134156403938,Female,Chest Pain,Medium
+42,147/90,73,102.34027715720447,Male,Fracture,Medium
+15,113/66,114,99.2614663165624,Male,Chest Pain,Medium
+16,93/79,113,98.49891704238092,Female,Fracture,Low
+76,125/83,106,99.51018147286702,Male,Fever and Confusion,Low
+10,139/64,62,101.54784234677525,Female,Severe Breathlessness,Medium
+78,147/76,118,100.09719507617325,Male,Severe Breathlessness,Medium
+68,121/80,90,101.08109583351114,Female,Chest Pain,High
+81,113/68,92,101.06204236961631,Male,Chest Pain,High
+22,99/72,72,99.26636768900202,Female,Fracture,Low
+46,96/61,119,98.11751444080676,Female,Fever and Confusion,Low
+52,123/75,119,98.32048768872679,Male,Fever and Confusion,High
+56,157/76,99,98.81903282445394,Female,Chest Pain,Medium
+79,138/77,60,102.16597636420374,Female,Fracture,Medium
+37,129/86,63,100.42415039437678,Male,Severe Breathlessness,High
+59,135/62,95,102.25551809165869,Female,Chest Pain,Medium
+74,121/91,92,101.12499047337468,Female,Fracture,Medium
+40,148/92,112,102.44141188895667,Male,Fracture,Medium
+33,145/71,66,102.82769014402437,Male,Fever and Confusion,Medium
+87,159/67,66,98.8499758372713,Male,Fever and Confusion,Medium
+84,97/89,118,103.58803825717834,Female,Chest Pain,Medium
+14,116/95,78,98.78353470663583,Male,Fracture,Medium
+59,159/64,78,103.23731782120012,Male,Severe Breathlessness,Medium
+18,125/97,60,100.11598470826893,Male,Fracture,Low
+27,105/96,82,103.11418980547346,Female,Severe Breathlessness,Low
+34,103/63,110,100.11746302395116,Female,Severe Breathlessness,Low
+65,98/66,72,97.02689329095587,Female,Fracture,Medium
+56,120/94,103,103.6649570700645,Female,Severe Breathlessness,Low
+75,100/70,72,97.97221921419035,Male,Severe Breathlessness,High
+27,139/91,97,102.29479151434238,Female,Severe Breathlessness,High
+67,123/92,78,103.8328615168972,Male,Severe Breathlessness,Medium
+81,96/99,100,101.50809732262186,Female,Chest Pain,High
+24,153/71,69,101.10171662176788,Male,Fever and Confusion,High
+36,134/74,101,100.87915994504381,Female,Fever and Confusion,Low
+47,112/93,79,97.68025131732891,Female,Fracture,Low
+53,92/72,114,97.8072719485887,Male,Fracture,Low
+65,98/62,81,103.51539391815622,Male,Chest Pain,Low
+51,106/91,67,102.09767804545949,Male,Chest Pain,High
+11,121/71,78,100.36976445860272,Male,Chest Pain,High
+79,136/91,102,98.7565520986193,Female,Fever and Confusion,High
+54,126/95,98,101.02052898759844,Female,Fever and Confusion,Low
+53,104/63,63,103.08219784748802,Female,Fever and Confusion,High
+34,107/65,84,98.95762617211545,Male,Fracture,High
+83,125/62,61,99.16094160026525,Male,Severe Breathlessness,High
+38,152/67,78,103.51540769637981,Female,Chest Pain,High
+69,90/99,103,98.72083364514651,Male,Fever and Confusion,Medium
+43,131/64,61,103.9607183031283,Female,Fever and Confusion,High
+83,95/98,66,99.46372595141847,Male,Severe Breathlessness,Low
+37,124/93,66,103.78687563266158,Female,Fracture,High
+61,99/79,82,98.92618034339405,Female,Fracture,Low
+76,90/94,66,102.42329738788794,Female,Fracture,High
+29,132/80,117,98.92758915558157,Female,Fever and Confusion,Low
+47,127/81,97,99.58520286752797,Male,Chest Pain,Low
+47,134/93,94,103.75744608808536,Female,Fracture,Medium
+73,138/68,105,100.60581717679031,Male,Chest Pain,High
+59,159/65,97,98.2031763035265,Female,Fracture,Low
+18,158/67,62,100.54706243151988,Female,Fracture,Medium
+72,152/78,114,103.14443965735866,Female,Fracture,Medium
+28,108/77,99,97.8235494183226,Female,Severe Breathlessness,Low
+55,119/88,118,101.0538846678482,Male,Severe Breathlessness,Medium
+60,119/82,111,101.58771848426441,Male,Fever and Confusion,High
+30,125/70,66,97.55323240466933,Female,Fracture,Medium
+10,117/61,114,100.76523568383317,Male,Chest Pain,High
+54,105/65,116,100.46218656374326,Female,Fracture,Medium
+73,134/77,87,103.74430574885564,Female,Fracture,High
+45,92/66,113,98.8397467904965,Female,Chest Pain,Medium
+61,104/80,116,103.89120251285775,Female,Fever and Confusion,Low
+79,133/99,69,103.71154271954765,Male,Severe Breathlessness,High
+29,102/78,90,99.57619787993588,Male,Fever and Confusion,Low
+51,110/69,87,100.4686227035967,Male,Fracture,High
+49,156/72,115,98.47222277810558,Male,Chest Pain,High
+18,111/72,107,100.03339344905201,Male,Fracture,Medium
+24,119/71,92,103.28556003919158,Male,Fever and Confusion,Medium
+61,153/73,62,99.60605113753061,Male,Fracture,Medium
+89,139/89,106,98.31632405811577,Female,Fever and Confusion,High
+71,152/84,89,103.61990796429137,Male,Chest Pain,Medium
+19,99/68,75,102.94158630075023,Female,Fever and Confusion,Medium
+50,110/91,93,100.84929185082935,Male,Fracture,Medium
+83,130/64,115,102.64810045202618,Female,Fever and Confusion,High
+32,92/94,85,102.40900188523106,Male,Chest Pain,High
+47,115/83,103,101.98935826582348,Male,Severe Breathlessness,High
+70,130/98,79,97.65073590025075,Female,Fever and Confusion,Medium
+75,156/68,107,103.55572153836641,Female,Fracture,High
+70,113/62,117,99.6802022818839,Female,Chest Pain,Low
+13,159/60,73,100.26803814577492,Female,Fracture,Low
+76,144/64,72,102.03683607543184,Male,Severe Breathlessness,High
+35,153/80,82,99.24951420160008,Male,Severe Breathlessness,Medium
+73,143/98,79,99.90739921505113,Female,Severe Breathlessness,Low
+48,100/80,87,99.00779231961131,Male,Severe Breathlessness,Low
+60,142/79,88,97.3039860381568,Female,Chest Pain,High
+62,119/76,97,103.45811422083378,Female,Chest Pain,Low
+70,108/94,76,103.10767568212071,Male,Severe Breathlessness,High
+38,114/93,81,100.57462845507436,Female,Severe Breathlessness,Low
+61,113/86,114,97.87400774963787,Female,Chest Pain,Medium
+44,155/64,87,100.6428685770177,Male,Severe Breathlessness,Medium
+45,93/61,93,103.20864210065561,Female,Severe Breathlessness,High
+20,101/88,100,103.344667487956,Male,Chest Pain,High
+35,109/79,75,100.89347042677565,Male,Fracture,Medium
+29,91/78,88,99.18427314726974,Male,Fever and Confusion,Low
