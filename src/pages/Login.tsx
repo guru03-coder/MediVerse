@@ -137,7 +137,7 @@ export function Login() {
                             </div>
 
                             <div className="pt-4">
-                                <Link to="/intake" className="w-full">
+                                <Link to="/otp-verification" className="w-full">
                                     <VitalButton className="w-full bg-green-600 hover:bg-green-700 border-green-600 py-3.5 text-base shadow-green-600/20 text-white">
                                         Continue as Patient
                                         <ArrowRight className="w-4 h-4 ml-2" />

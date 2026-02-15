@@ -57,11 +57,20 @@ def admit_patient(patient_data: dict, risk_level: str, recommended_dept: str):
         patient_id = str(uuid.uuid4())
         patient_code = f"P-{str(uuid.uuid4())[:4].upper()}" # Gen random code P-XXXX
         
+        # Extract fields
+        name = patient_data.get("Name") or "Unknown"
+        age = patient_data.get("Age")
+        gender = patient_data.get("Gender")
+        symptoms = patient_data.get("Symptoms")
+        
+        # Format Vitals
+        vitals = f"BP: {patient_data.get('Blood Pressure', '--')}, HR: {patient_data.get('Heart Rate', '--')}, Temp: {patient_data.get('Temperature', '--')}"
+
         cursor.execute('''
             INSERT INTO patients 
-            (id, patient_code, risk_level, recommended_department, assigned_department, status, priority_weight)
-            VALUES (?, ?, ?, ?, ?, 'waiting', ?)
-        ''', (patient_id, patient_code, risk_level, recommended_dept, assigned_dept, p_weight))
+            (id, patient_code, risk_level, recommended_department, assigned_department, status, priority_weight, name, age, gender, symptoms, vitals)
+            VALUES (?, ?, ?, ?, ?, 'waiting', ?, ?, ?, ?, ?, ?)
+        ''', (patient_id, patient_code, risk_level, recommended_dept, assigned_dept, p_weight, name, age, gender, symptoms, vitals))
         
         conn.commit()
         

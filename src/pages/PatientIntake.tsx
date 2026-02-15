@@ -133,9 +133,9 @@ export function PatientIntake() {
                         <User className="w-4 h-4" />
                         Nurse Panel
                     </span>
-                    <Link to="/dashboard/nurse">
+                    <Link to="/">
                         <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors cursor-pointer">
-                            ← Back to Dashboard
+                            ← Back to Home
                         </button>
                     </Link>
                 </div>

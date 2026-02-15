@@ -747,7 +747,7 @@ function DepartmentCardContent({ name, icon, status, stats, onToggle }: any) {
 // ... PatientCard and BuildingIcon remain the same ...
 
 function PatientCard({ data, time, onDischarge }: any) {
-    const { patient_code: id, risk_level: risk, assigned_department: dept } = data;
+    const { patient_code: id, risk_level: risk, assigned_department: dept, name } = data;
 
     const color = risk === 'CRITICAL' ? 'red' : risk === 'High' ? 'amber' : 'emerald';
 
@@ -773,7 +773,10 @@ function PatientCard({ data, time, onDischarge }: any) {
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${color === 'red' ? 'bg-red-500 animate-[pulse_1s_ease-in-out_infinite]' : color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-                    <span className="font-mono font-bold text-slate-800">{id}</span>
+                    <div className="flex flex-col">
+                        <span className="font-bold text-slate-800 text-sm leading-tight">{name && name !== 'Unknown' ? name : id}</span>
+                        {name && name !== 'Unknown' && <span className="text-[10px] text-slate-400 font-mono">{id}</span>}
+                    </div>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${riskBadges[risk]}`}>
                     <span className="relative z-10">{risk}</span>
