@@ -2,7 +2,7 @@ import joblib
 import pandas as pd
 import os
 from services.nlp_service import extract_symptoms
-from services.resource_service import get_dept_availability
+
 
 # Resolve paths relative to this file's directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,6 +25,15 @@ def predict_risk(input_data: dict):
     """
 
     df = pd.DataFrame([input_data])
+    
+    # Ensure types
+    if "Age" in df.columns:
+        df["Age"] = pd.to_numeric(df["Age"], errors='coerce').fillna(0).astype(int)
+    if "Heart Rate" in df.columns:
+        df["Heart Rate"] = pd.to_numeric(df["Heart Rate"], errors='coerce').fillna(0).astype(int)
+    if "Temperature" in df.columns:
+        df["Temperature"] = pd.to_numeric(df["Temperature"], errors='coerce').fillna(0.0).astype(float)
+
 
     # --- Preprocessing (Must match training) ---
     df[["Systolic_BP", "Diastolic_BP"]] = df["Blood Pressure"].str.split("/", expand=True)
@@ -65,20 +74,10 @@ def predict_risk(input_data: dict):
     dept_pred = dept_model.predict(df)
     recommended_dept = dept_encoder.inverse_transform(dept_pred)[0]
     
-    # Check Availability
-    availability_map = get_dept_availability()
-    is_available = availability_map.get(recommended_dept, True)
-    
-    assigned_dept = recommended_dept
-    if not is_available:
-        assigned_dept = f"{recommended_dept} (BUSY) -> General / Waitlist"
-
     return {
         "risk_level": risk_level,
         "confidence": confidence,
         "recommended_dept": recommended_dept,
-        "assigned_dept": assigned_dept,
-        "is_dept_available": is_available,
         "safety_advice": advice
     }
 

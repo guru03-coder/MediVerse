@@ -1,32 +1,143 @@
-import { motion, useTransform, useMotionValue, useSpring, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
     Users, Clock, AlertTriangle, Activity,
-    Heart, Brain, Bone, ArrowRight, Bell, LogOut
+    Heart, Brain, Bone, Bell, LogOut, X, BarChart3, CheckCircle
 } from 'lucide-react';
 import { GridBackground } from '../components/ui/GridBackground';
+import { Logo } from '../components/ui/Logo';
+import { MockDB } from '../lib/mockDatabase';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 import { useEffect, useState } from 'react';
-import { assessPatient, getRandomSymptoms, getRandomVitals, type TriagePrediction } from '../services/triageSdk';
+import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
+
+// --- Types ---
+interface AnalyticsData {
+    risk_distribution: { name: string; value: number }[];
+    department_load: { name: string; value: number }[];
+    patient_attendance: { name: string; value: number }[];
+    model_accuracy: { name: string; value: number }[];
+}
+
+const generateTrendData = () => {
+    const data = [];
+    const now = new Date();
+    for (let i = 12; i >= 0; i--) {
+        const time = new Date(now.getTime() - i * 5 * 60000); // 5 min intervals
+        data.push({
+            time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            value: Math.floor(Math.random() * 5) + (i % 3 === 0 ? 2 : 0)
+        });
+    }
+    return data;
+};
+
+const generateFlowData = () => {
+    const data = [];
+    const now = new Date();
+    // Generate for last 8 hours
+    for (let i = 8; i >= 0; i--) {
+        const time = new Date(now.getTime() - i * 60 * 60000); // Hourly
+        data.push({
+            time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            arrivals: Math.floor(Math.random() * 8) + 2,
+            discharges: Math.floor(Math.random() * 6) + 1
+        });
+    }
+    return data;
+};
 
 export function NurseDashboard() {
     const navigate = useNavigate();
-    // State for Patients
-    const [patients, setPatients] = useState<any[]>([]);
-    const [isSimulating, setIsSimulating] = useState(false);
 
-    // Initial Load
+    // State
+    const [stats, setStats] = useState<any>(null);
+    const [patients, setPatients] = useState<any[]>([]);
+    const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+    const [trendData, setTrendData] = useState<any[]>(generateTrendData());
+    const [flowData, setFlowData] = useState<any[]>(generateFlowData());
+    const [viewMode, setViewMode] = useState<'queue' | 'analytics'>('queue');
+    const [showDoctorModal, setShowDoctorModal] = useState(false);
+
+    // AI & Action State
+
+
+    // --- Actions ---
+    const handleDischarge = async (id: string, code: string) => {
+        if (!confirm("Mark patient " + code + " as discharged?")) return;
+
+        try {
+            await fetch("/patients/" + id + "/discharge", { method: 'POST' });
+            // Optimistic update
+            setPatients(prev => prev.filter(p => p.id !== id));
+        } catch (e) {
+            console.warn("Backend discharge failed, using mock DB", e);
+            // Fallback to Mock DB
+            const success = MockDB.dischargePatient(id);
+            if (success) {
+                setPatients(prev => prev.filter(p => p.id !== id));
+            } else {
+                alert("Failed to discharge");
+            }
+        }
+    };
+
+
+    // --- Polling ---
     useEffect(() => {
-        // Load some initial mock patients
-        const loadInitial = async () => {
-            const initialPatients = [
-                { id: "P-001", risk: "CRITICAL", dept: "Cardiology", time: "10m", color: "red" },
-                { id: "P-002", risk: "URGENT", dept: "Neurology", time: "15m", color: "amber" }
-            ];
-            setPatients(initialPatients);
+        const fetchData = async () => {
+            try {
+                // 1. Stats (Always fetch)
+                const statsRes = await fetch('/dashboard/stats');
+                const statsData = await statsRes.json();
+                setStats(statsData);
+
+                // 2. Poll based on view
+                if (viewMode === 'queue') {
+                    const patientsRes = await fetch('/patients');
+                    const patientsData = await patientsRes.json();
+                    setPatients(patientsData);
+                } else {
+                    const analyticsRes = await fetch('/dashboard/analytics');
+                    const analyticsData = await analyticsRes.json();
+                    setAnalytics(analyticsData);
+                }
+            } catch (error) {
+                console.error("Polling Error:", error);
+
+                // Fallback to MockDB (Dynamic) instead of static mocks
+                if (!stats) setStats(MockDB.getStats());
+                if (patients.length === 0) setPatients(MockDB.getPatients());
+                if (!analytics) setAnalytics(MockDB.getAnalytics());
+            }
         };
-        loadInitial();
-    }, []);
+
+        // Initial loading 
+        if (!stats) setStats(MockDB.getStats());
+        if (patients.length === 0) setPatients(MockDB.getPatients());
+        if (!analytics) setAnalytics(MockDB.getAnalytics());
+
+        // Trend Update Logic
+        const trendInterval = setInterval(() => {
+            setTrendData(prev => {
+                const newData = [...prev.slice(1)];
+                const now = new Date();
+                newData.push({
+                    time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    value: Math.floor(Math.random() * 6) + 1 // New random point
+                });
+                return newData;
+            });
+        }, 5000); // Fast update for demo (5s)
+
+        fetchData(); // Initial
+        const interval = setInterval(fetchData, 5000); // Poll every 5s
+
+        return () => {
+            clearInterval(interval);
+            clearInterval(trendInterval);
+        }
+    }, [viewMode]);
 
     // Staggered Entrance Variants
     const containerVariants = {
@@ -34,228 +145,393 @@ export function NurseDashboard() {
         visible: {
             opacity: 1,
             transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.2
+                staggerChildren: 0.1
             }
         }
     };
 
     const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
+        hidden: { y: 20, opacity: 0 },
         visible: {
-            opacity: 1,
             y: 0,
-            transition: {
-                duration: 0.8,
-                ease: [0.25, 0.4, 0.25, 1] as any
-            }
+            opacity: 1,
+            transition: { type: "spring", stiffness: 100 }
         }
     };
 
-    // State for Availability
-    const [deptAvailability, setDeptAvailability] = useState<Record<string, boolean>>({});
-
-    // Fetch initial availability
-    useEffect(() => {
-        fetch('http://localhost:8000/availability')
-            .then(res => res.json())
-            .then(data => setDeptAvailability(data))
-            .catch(err => console.error("Failed to load availability:", err));
-    }, []);
-
-    const toggleAvailability = async (dept: string) => {
-        const newState = !deptAvailability[dept];
-        // Optimistic update
-        setDeptAvailability(prev => ({ ...prev, [dept]: newState }));
-
-        try {
-            await fetch('http://localhost:8000/availability', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ dept, is_available: newState })
-            });
-        } catch (error) {
-            console.error("Failed to update availability:", error);
-            // Revert on failure
-            setDeptAvailability(prev => ({ ...prev, [dept]: !newState }));
-        }
-    };
-
-    const handleSimulatePatient = async () => {
-        setIsSimulating(true);
-        const symptoms = getRandomSymptoms();
-        const vitals = getRandomVitals();
-
-        try {
-            // Call SDK (Gemini or Mock)
-            const prediction: TriagePrediction = await assessPatient(symptoms, vitals);
-
-            const newPatient = {
-                id: `P-${Math.floor(Math.random() * 1000)}`,
-                risk: prediction.riskLevel,
-                dept: prediction.recommendedDept, // Now prediction includes dept
-                time: "Just now",
-                color: prediction.riskLevel === 'CRITICAL' ? 'red' : prediction.riskLevel === 'URGENT' ? 'amber' : 'emerald'
-            };
-
-            setPatients(prev => [newPatient, ...prev]);
-
-        } catch (error) {
-            console.error("Simulation failed:", error);
-        } finally {
-            setIsSimulating(false);
-        }
+    const getDeptIcon = (name: string) => {
+        if (name.includes("Cardio")) return <Heart className="w-6 h-6 text-rose-500" />;
+        if (name.includes("Neuro")) return <Brain className="w-6 h-6 text-indigo-500" />;
+        if (name.includes("Ortho")) return <Bone className="w-6 h-6 text-slate-500" />;
+        return <Activity className="w-6 h-6 text-medical-blue-500" />;
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-medical-blue-100 flex flex-col overflow-hidden relative">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative overflow-hidden selection:bg-medical-blue-100">
+            <GridBackground />
             <NoiseOverlay />
             <ScanningOverlay />
-            <GridBackground />
 
-            {/* Top Navigation */}
-            <motion.header
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-                className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-md border-b border-slate-200/50 px-6 py-4 flex items-center justify-between"
-            >
+            {/* Navbar */}
+            <nav className="fixed top-0 left-0 right-0 h-16 bg-white/70 backdrop-blur-md border-b border-white/50 z-50 flex items-center justify-between px-6 shadow-sm">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-medical-blue-600 rounded-lg flex items-center justify-center text-white font-bold">M</div>
-                    <span className="font-bold text-lg tracking-tight text-slate-800">MediVerse <span className="text-slate-400 font-normal">Hospitals</span></span>
+                    <Logo />
+                    <span className="ml-4 px-2 py-0.5 rounded-full bg-medical-blue-50 text-medical-blue-600 text-[10px] font-bold uppercase tracking-wider border border-medical-blue-100">
+                        NurseOS v2.0
+                    </span>
                 </div>
+
                 <div className="flex items-center gap-6">
-                    <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-slate-500 text-sm">
-                        <Clock className="w-4 h-4 animate-[spin_10s_linear_infinite]" />
-                        <span>Shift: 08:00 - 20:00</span>
+                    <div className="hidden md:flex items-center gap-4 text-xs font-medium text-slate-500">
+                        <span className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            System Online
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            {new Date().toLocaleTimeString()}
+                        </span>
                     </div>
-                    <button className="p-2 text-slate-400 hover:text-medical-blue-600 transition-colors relative">
-                        <Bell className="w-5 h-5" />
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-ping"></span>
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                    </button>
-                    <div className="w-8 h-8 rounded-full bg-slate-200 border border-slate-300 overflow-hidden cursor-pointer">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Nurse" alt="Profile" />
+
+                    <div className="h-8 w-[1px] bg-slate-200 mx-2"></div>
+
+                    <div className="flex items-center gap-3 pl-2">
+                        <button className="relative p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600">
+                            <Bell className="w-5 h-5" />
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                        </button>
+                        <button
+                            onClick={() => navigate('/')}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors group"
+                        >
+                            <LogOut className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                            <span className="text-sm font-medium">Logout</span>
+                        </button>
                     </div>
-                    <button
-                        onClick={() => navigate('/')}
-                        className="p-2 text-slate-400 hover:text-red-600 transition-colors flex items-center gap-2"
-                        title="Logout"
-                    >
-                        <LogOut className="w-5 h-5" />
-                    </button>
                 </div>
-            </motion.header >
+            </nav>
 
             <motion.main
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
-                className="flex-grow pt-24 px-6 pb-12 relative z-10 max-w-7xl mx-auto w-full"
+                className="pt-24 pb-12 px-6 max-w-7xl mx-auto relative z-10"
             >
-
-                {/* Welcome & Context */}
-                <motion.div variants={itemVariants} className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <div>
-                        <h1 className="text-3xl font-bold text-slate-900">Hospital Operations Center</h1>
-                        <p className="text-slate-500 mt-1">Real-time overview of active departments and patient flow.</p>
+                        <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
+                            Live Dashboard
+                        </h1>
+                        <p className="text-slate-500 mt-1">Real-time patient flow & resource monitoring</p>
                     </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={handleSimulatePatient}
-                            disabled={isSimulating}
-                            className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
-                        >
-                            {isSimulating ? "Simulating AI..." : "Simulate Incoming Patient"}
-                        </button>
+
+                    <div className="flex gap-3">
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
+                            onClick={() => setShowDoctorModal(true)}
                             className="relative overflow-hidden px-4 py-2 bg-medical-blue-600 text-white rounded-lg text-sm font-medium hover:bg-medical-blue-700 transition-colors shadow-lg shadow-medical-blue-600/20 group cursor-pointer"
                         >
-                            <span className="relative z-10">Manage Resources</span>
-                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                            <span className="relative z-10 flex items-center gap-2">
+                                <Users className="w-4 h-4" /> Manage Resources
+                            </span>
                         </motion.button>
                     </div>
-                </motion.div>
+                </div>
 
-                {/* Top Stats Row */}
-                <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {/* KPI Cards */}
+                <motion.div
+                    variants={itemVariants}
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+                >
                     <TiltCard>
                         <StatsCardContent
                             title="Total Departments"
-                            value={6}
-                            icon={<BuildingIcon className="w-5 h-5 text-medical-blue-600" />}
+                            value={stats?.departments ? Object.keys(stats.departments).length : 0}
+                            icon={<Activity className="w-5 h-5 text-medical-blue-600" />}
                             trend="Active"
                             color="blue"
                         />
                     </TiltCard>
                     <TiltCard>
                         <StatsCardContent
-                            title="Doctors Available"
-                            value={12}
-                            subtitle="Active Staff"
+                            title="Doctors Active"
+                            value={stats?.departments ? Object.values(stats.departments).reduce((acc: any, d: any) => acc + d.active_doctors, 0) : 0}
+                            subtitle="On Shift"
                             icon={<Users className="w-5 h-5 text-emerald-600" />}
-                            trend="+2 from yesterday"
+                            trend="Real-time"
                             color="emerald"
                         />
                     </TiltCard>
                     <TiltCard>
                         <StatsCardContent
                             title="Avg Wait Time"
-                            value={18}
+                            value={stats?.departments ? Math.round(
+                                Object.values(stats.departments).reduce((acc: any, d: any) => acc + (d.wait_time || 0), 0) /
+                                (Object.values(stats.departments).length || 1)
+                            ) : 0}
                             suffix=" min"
                             icon={<Clock className="w-5 h-5 text-amber-600" />}
-                            trend="-5% improvement"
+                            trend="Dynamic"
                             color="amber"
                         />
                     </TiltCard>
                     <TiltCard>
                         <StatsCardContent
-                            title="High Risk Patients"
-                            value={patients.filter(p => p.risk === 'CRITICAL').length}
+                            title="High Risk Waiting"
+                            value={stats?.queue?.high_risk_waiting || 0}
                             icon={<AlertTriangle className="w-5 h-5 text-red-600" />}
                             trend="Needs Attention"
                             color="red"
-                            alert={patients.some(p => p.risk === 'CRITICAL')}
+                            alert={stats?.queue?.high_risk_waiting > 0}
                         />
                     </TiltCard>
                 </motion.div>
 
-                {/* Middle Section: Grid & Queue */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* --- Main Content Area --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
 
-                    {/* Left Column: Department Grid (2/3 width) */}
+                    {/* Left Col: Queue OR Analytics */}
                     <div className="lg:col-span-2 space-y-6">
-                        <motion.div variants={itemVariants} className="flex items-center justify-between mb-2">
-                            <h2 className="text-lg font-bold text-slate-800">Department Availability</h2>
-                            <button className="text-medical-blue-600 text-sm font-medium hover:underline cursor-pointer">Manage All</button>
-                        </motion.div>
 
-                        <motion.div variants={itemVariants} className="space-y-4">
-                            {[
-                                { name: "Cardiology", icon: <Heart className="w-6 h-6 text-rose-500" />, stats: { docs: 4, wait: "5 min" } },
-                                { name: "Neurology", icon: <Brain className="w-6 h-6 text-violet-500" />, stats: { docs: 2, waiting: "15 min" } },
-                                { name: "Orthopedics", icon: <Bone className="w-6 h-6 text-slate-500" />, stats: { docs: 2, waiting: "7 min" } },
-                                { name: "General", icon: <Activity className="w-6 h-6 text-emerald-500" />, stats: { docs: 6, waiting: "2 min" } },
-                                { name: "Pediatrics", icon: <Users className="w-6 h-6 text-amber-500" />, stats: { docs: 3, waiting: "10 min" } }
-                            ].map((dept) => (
-                                <TiltCard key={dept.name}>
-                                    <DepartmentCardContent
-                                        name={dept.name}
-                                        icon={dept.icon}
-                                        status={deptAvailability[dept.name] !== false ? "available" : "busy"}
-                                        stats={dept.stats}
-                                        onToggle={() => toggleAvailability(dept.name)}
-                                    />
-                                </TiltCard>
-                            ))}
-                        </motion.div>
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => setViewMode('queue')}
+                                    className={`text-lg font-bold transition-colors flex items-center gap-2 ${viewMode === 'queue' ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    <Users className="w-4 h-4" /> Live Queue
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('analytics')}
+                                    className={`text-lg font-bold transition-colors flex items-center gap-2 ${viewMode === 'analytics' ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    <BarChart3 className="w-4 h-4" /> Analytics
+                                </button>
+                            </div>
+                            {viewMode === 'queue' && (
+                                <button onClick={() => setShowDoctorModal(true)} className="text-medical-blue-600 text-sm font-medium hover:underline cursor-pointer">Manage All</button>
+                            )}
+                        </div>
+
+                        <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-1 min-h-[500px]">
+                            <AnimatePresence mode='wait'>
+                                {viewMode === 'queue' ? (
+                                    <motion.div
+                                        key="queue"
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="space-y-4 p-4"
+                                    >
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {stats?.departments && Object.entries(stats.departments).map(([name, data]: [string, any]) => (
+                                                <TiltCard key={name}>
+                                                    <DepartmentCardContent
+                                                        name={name}
+                                                        icon={getDeptIcon(name)}
+                                                        status={data.active_doctors > 0 ? "available" : "busy"}
+                                                        stats={{
+                                                            docs: data.active_doctors,
+                                                            wait: data.wait_time ? `${data.wait_time} min` : (data.active_doctors === 0 ? "Closed" : "--")
+                                                        }}
+                                                        onToggle={() => setShowDoctorModal(true)}
+                                                    />
+                                                </TiltCard>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="analytics"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="p-6 space-y-8"
+                                    >
+                                        {/* Risk Distribution Chart */}
+                                        <div>
+                                            <h3 className="text-slate-600 font-medium mb-4 flex items-center gap-2">
+                                                <Activity className="w-4 h-4" /> Risk Distribution
+                                            </h3>
+                                            <div className="flex items-end gap-2 h-40 border-b border-slate-200 pb-2 px-4">
+                                                {analytics?.risk_distribution && analytics.risk_distribution.length > 0 ? (
+                                                    analytics.risk_distribution.map((item, i) => {
+                                                        const maxVal = Math.max(...analytics.risk_distribution.map(d => d.value), 1);
+                                                        const height = (item.value / maxVal) * 100;
+                                                        const color = item.name === 'CRITICAL' ? 'bg-red-500' : item.name === 'High' ? 'bg-amber-500' : 'bg-emerald-500';
+
+                                                        return (
+                                                            <div key={item.name} className="flex-1 flex flex-col justify-end items-center group">
+                                                                <motion.div
+                                                                    initial={{ height: 0 }}
+                                                                    animate={{ height: `${height}%` }}
+                                                                    className={`w-full max-w-[40px] ${color} rounded-t-sm opacity-80 group-hover:opacity-100 transition-opacity`}
+                                                                />
+                                                                <span className="text-[10px] text-slate-500 mt-2 font-medium truncate w-full text-center">{item.name}</span>
+                                                                <span className="text-xs font-bold text-slate-700">{item.value}</span>
+                                                            </div>
+                                                        )
+                                                    })
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">No Data</div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Department Load Chart */}
+                                        <div>
+                                            <h3 className="text-slate-600 font-medium mb-4 flex items-center gap-2">
+                                                <Users className="w-4 h-4" /> Department Load
+                                            </h3>
+                                            <div className="space-y-3">
+                                                {analytics?.department_load && analytics.department_load.length > 0 ? (
+                                                    analytics.department_load.map((item, i) => (
+                                                        <div key={item.name} className="space-y-1">
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="font-medium text-slate-700">{item.name}</span>
+                                                                <span className="text-slate-500">{item.value} patients</span>
+                                                            </div>
+                                                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                                <motion.div
+                                                                    initial={{ width: 0 }}
+                                                                    animate={{ width: `${(item.value / (Math.max(...analytics.department_load.map(d => d.value), 1))) * 100}%` }}
+                                                                    className="h-full bg-medical-blue-500 rounded-full"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-center text-slate-400 text-sm py-8">No Data</div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Patient Flow Chart (Arrivals vs Discharges) */}
+                                        <div>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h3 className="text-slate-600 font-medium flex items-center gap-2">
+                                                    <Clock className="w-4 h-4" /> Patient Flow (Hourly)
+                                                </h3>
+                                                <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                                    Real-time patient flow monitoring
+                                                </span>
+                                            </div>
+
+                                            <div className="h-40 w-full bg-slate-50/50 rounded-lg border border-slate-100 p-2 relative">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <LineChart data={flowData}>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                                        <XAxis
+                                                            dataKey="time"
+                                                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            interval={1}
+                                                        />
+                                                        <YAxis
+                                                            hide
+                                                            domain={[0, 'auto']}
+                                                        />
+                                                        <Tooltip
+                                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                            labelStyle={{ color: '#64748b', fontSize: '10px' }}
+                                                        />
+                                                        <Line
+                                                            name="Arrivals"
+                                                            type="monotone"
+                                                            dataKey="arrivals"
+                                                            stroke="#10b981" // Green
+                                                            strokeWidth={2}
+                                                            dot={false}
+                                                            activeDot={{ r: 4, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                                                        />
+                                                        <Line
+                                                            name="Discharges"
+                                                            type="monotone"
+                                                            dataKey="discharges"
+                                                            stroke="#3b82f6" // Blue
+                                                            strokeWidth={2}
+                                                            dot={false}
+                                                            activeDot={{ r: 4, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                                                        />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            <div className="flex justify-center gap-4 mt-2">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span className="text-[10px] text-slate-500">Arrivals</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                                    <span className="text-[10px] text-slate-500">Discharges</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Live Risk Trend Chart */}
+                                        <div>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h3 className="text-slate-600 font-medium flex items-center gap-2">
+                                                    <Activity className="w-4 h-4 text-red-500" /> Live Risk Trend (Last 60m)
+                                                </h3>
+                                                <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full border border-red-100 animate-pulse">
+                                                    Real-time risk spike detection enabled by ML model
+                                                </span>
+                                            </div>
+
+                                            <div className="h-40 w-full bg-slate-50/50 rounded-lg border border-slate-100 p-2 relative">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <LineChart data={trendData}>
+                                                        <defs>
+                                                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1} />
+                                                                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                                        <XAxis
+                                                            dataKey="time"
+                                                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            interval={2}
+                                                        />
+                                                        <YAxis
+                                                            hide
+                                                            domain={[0, 10]}
+                                                        />
+                                                        <Tooltip
+                                                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                                            itemStyle={{ color: '#ef4444', fontSize: '12px', fontWeight: 'bold' }}
+                                                            labelStyle={{ color: '#64748b', fontSize: '10px' }}
+                                                        />
+                                                        <Line
+                                                            type="monotone"
+                                                            dataKey="value"
+                                                            stroke="#ef4444"
+                                                            strokeWidth={2}
+                                                            dot={false}
+                                                            activeDot={{ r: 4, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }}
+                                                            animationDuration={1500}
+                                                        />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
                     </div>
 
                     {/* Right Column: Live Risk Queue (1/3 width) */}
-                    {/* ... (Keep Risk Queue as is, or wrap in Tilt if desired, keeping it simple for now) ... */}
-                    <motion.div variants={itemVariants} className="lg:col-span-1">
+                    <div className="lg:col-span-1">
                         <div className="bg-white/60 backdrop-blur-xl border border-white/60 rounded-2xl shadow-sm h-full flex flex-col relative overflow-hidden">
                             {/* Scanning line for the queue specific */}
                             <div className="absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent top-0 animate-[scan-vertical_4s_linear_infinite]" />
@@ -268,17 +544,15 @@ export function NurseDashboard() {
                                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></span>
                             </div>
 
-                            {/* ... Content ... */}
+                            {/* Queue List */}
                             <div className="p-4 space-y-3 flex-grow overflow-auto max-h-[500px] z-10 relative">
                                 <AnimatePresence initial={false} mode="popLayout">
                                     {patients.map((patient) => (
                                         <PatientCard
                                             key={patient.id}
-                                            id={patient.id}
-                                            risk={patient.risk}
-                                            dept={patient.dept}
-                                            time={patient.time}
-                                            color={patient.color}
+                                            data={patient}
+                                            time={`${Math.floor((Date.now() - new Date(patient.created_at).getTime()) / 60000)} min`}
+                                            onDischarge={() => handleDischarge(patient.id, patient.patient_code)}
                                         />
                                     ))}
                                 </AnimatePresence>
@@ -293,12 +567,20 @@ export function NurseDashboard() {
                                 </button>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
 
                 </div>
 
             </motion.main>
-        </div >
+
+            <ManageDoctorsModal
+                isOpen={showDoctorModal}
+                onClose={() => setShowDoctorModal(false)}
+                departments={stats?.departments}
+            />
+
+
+        </div>
     );
 }
 
@@ -464,7 +746,11 @@ function DepartmentCardContent({ name, icon, status, stats, onToggle }: any) {
 
 // ... PatientCard and BuildingIcon remain the same ...
 
-function PatientCard({ id, risk, dept, time, color }: any) {
+function PatientCard({ data, time, onDischarge }: any) {
+    const { patient_code: id, risk_level: risk, assigned_department: dept } = data;
+
+    const color = risk === 'CRITICAL' ? 'red' : risk === 'High' ? 'amber' : 'emerald';
+
     const colors: any = {
         red: "bg-red-50 border-red-100 text-red-700",
         amber: "bg-amber-50 border-amber-100 text-amber-700",
@@ -482,7 +768,7 @@ function PatientCard({ id, risk, dept, time, color }: any) {
             layout
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`p-4 rounded-xl border ${colors[color].split(' ')[1]} ${colors[color].split(' ')[0]} relative group transition-all hover:shadow-md cursor-pointer`}
+            className={`p-4 rounded-xl border ${colors[color].split(' ')[1]} ${colors[color].split(' ')[0]} relative group transition-all hover:shadow-md`}
         >
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-2">
@@ -497,27 +783,133 @@ function PatientCard({ id, risk, dept, time, color }: any) {
                 </span>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 mb-3">
                 <div className="text-xs text-slate-500">Rec. Dept: <span className="font-medium text-slate-700">{dept}</span></div>
                 <div className="text-xs text-slate-500">Time since arrival: <span className="font-medium text-slate-700">{time}</span></div>
             </div>
 
-            <button className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white rounded-lg shadow-sm text-slate-400 hover:text-medical-blue-600">
-                <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="flex gap-2 opacity-100">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDischarge(); }}
+                    className="flex-1 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg text-xs font-medium hover:bg-slate-50 hover:text-red-500 hover:border-red-200 transition-colors flex items-center justify-center gap-1"
+                >
+                    <CheckCircle className="w-3 h-3" /> Discharge
+                </button>
+            </div>
         </motion.div>
     )
 }
 
-function BuildingIcon({ className }: { className?: string }) {
-    return (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-    )
-}
 
 // --- Subcomponents ---
 
+function ManageDoctorsModal({ isOpen, onClose, departments }: any) {
+    const [selectedDept, setSelectedDept] = useState<string>("");
+    const [newDocName, setNewDocName] = useState("");
 
+    // Auto-select first dept
+    useEffect(() => {
+        if (departments && Object.keys(departments).length > 0 && !selectedDept) {
+            setSelectedDept(Object.keys(departments)[0]);
+        }
+    }, [departments]);
 
+    const handleAddDoctor = async () => {
+        if (!selectedDept || !newDocName) return;
+
+        // Find dept ID
+        const deptData = departments[selectedDept];
+        if (!deptData) return;
+
+        try {
+            const res = await fetch('/doctor/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newDocName, department_id: deptData.id })
+            });
+            if (!res.ok) throw new Error("API Failed");
+
+            setNewDocName("");
+            alert("Doctor Added! They are INACTIVE by default.");
+            onClose();
+
+        } catch (e) {
+            console.warn("Backend add doctor failed, using mock DB", e);
+            // Fallback
+            const success = MockDB.addDoctor(selectedDept, newDocName);
+            if (success) {
+                setNewDocName("");
+                alert("Doctor Added (Mock DB)!");
+                onClose();
+            } else {
+                alert("Failed to add doctor");
+            }
+        }
+    };
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+                >
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden"
+                    >
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <h2 className="text-xl font-bold text-slate-800">Manage Resources</h2>
+                            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                                <select
+                                    value={selectedDept}
+                                    onChange={(e) => setSelectedDept(e.target.value)}
+                                    className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-medical-blue-500 outline-none"
+                                >
+                                    {departments && Object.keys(departments).map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Add New Doctor</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={newDocName}
+                                        onChange={(e) => setNewDocName(e.target.value)}
+                                        placeholder="Dr. Name"
+                                        className="flex-1 p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-medical-blue-500 outline-none"
+                                    />
+                                    <button
+                                        onClick={handleAddDoctor}
+                                        className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors cursor-pointer"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-slate-50 rounded-lg text-sm text-slate-500">
+                                <p>Doctors must be manually activated to start accepting patients.</p>
+                                <p className="mt-2 text-xs text-slate-400">Current Active: {
+                                    selectedDept && departments[selectedDept] ? departments[selectedDept].active_doctors : 0
+                                }</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+    );
+}

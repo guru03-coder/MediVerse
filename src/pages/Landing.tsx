@@ -1,6 +1,7 @@
 import { motion, type Variants } from 'framer-motion';
 import { Stethoscope, Activity, User, ArrowRight, ShieldCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Logo } from '../components/ui/Logo';
 import { GlassCard } from '../components/ui/GlassCard';
 import { GlowingOrb } from '../components/ui/GlowingOrb';
 import { PulseButton } from '../components/ui/PulseButton';
@@ -11,6 +12,7 @@ import { VitalButton } from '../components/ui/VitalButton';
 import { DecodingText } from '../components/ui/DecodingText';
 
 export function Landing() {
+    const navigate = useNavigate();
     const containerVariants: Variants = {
         hidden: { opacity: 0 },
         visible: {
@@ -50,10 +52,7 @@ export function Landing() {
             <nav className="fixed top-0 left-0 right-0 z-50 p-6">
                 <div className="max-w-7xl mx-auto flex justify-between items-center glass rounded-full px-8 py-4 bg-white/40 backdrop-blur-md border border-white/30 shadow-lg">
                     <div className="flex items-center gap-2">
-                        <div className="bg-medical-blue-600 p-2 rounded-lg shadow-inner">
-                            <Activity className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-medical-blue-900">MediVerse</span>
+                        <Logo />
                     </div>
                     <div className="hidden md:flex items-center gap-6">
                         <Link to="/login">
@@ -207,9 +206,21 @@ export function Landing() {
                                 Emergency Protocol
                             </div>
                             <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-8">Critical Condition?</h2>
-                            <PulseButton onClick={() => alert("Emergency Mode Activated!")} />
+                            <PulseButton onClick={() => {
+                                navigate('/triage-result', {
+                                    state: {
+                                        result: { risk_level: 'CRITICAL', sos: true },
+                                        patientId: 'EMERGENCY-SOS',
+                                        patientName: 'Unknown (SOS)',
+                                        vitals: { bp: '--/--', hr: '--', temp: '--' }
+                                    }
+                                });
+                            }} />
                             <p className="mt-8 text-sm text-slate-400 max-w-md mx-auto font-medium">
                                 Press immediately if you are experiencing severe symptoms like <span className="text-slate-600">chest pain</span>, <span className="text-slate-600">difficulty breathing</span>, or <span className="text-slate-600">severe bleeding</span>.
+                            </p>
+                            <p className="mt-2 text-xs text-slate-400/80 font-medium">
+                                * No login required for emergency access.
                             </p>
                         </div>
                     </motion.div>
@@ -217,7 +228,7 @@ export function Landing() {
                     {/* Footer */}
                     <footer className="mt-32 border-t border-slate-200 pt-10 text-center pb-10">
                         <p className="text-slate-400 text-sm font-medium">
-                            © 2025 MediVerse System. Empowering Healthcare with AI.
+                            © 2025 MediVerse Hospitals. Empowering Healthcare with AI.
                         </p>
                         <div className="mt-6 flex justify-center gap-8 text-sm text-slate-500">
                             <a href="#" className="hover:text-medical-blue-600 transition-colors">Privacy Policy</a>

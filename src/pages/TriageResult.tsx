@@ -4,6 +4,7 @@ import {
     Activity, AlertTriangle, CheckCircle, ArrowRight, Printer, Share2
 } from 'lucide-react';
 import { GridBackground } from '../components/ui/GridBackground';
+import { Logo } from '../components/ui/Logo';
 
 export function TriageResult() {
     const location = useLocation();
@@ -70,10 +71,9 @@ export function TriageResult() {
             {/* Header */}
             <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-md border-b border-slate-200/50 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-medical-blue-600 rounded-lg flex items-center justify-center text-white font-bold">M</div>
-                    <span className="font-bold text-lg tracking-tight text-slate-800">
-                        MediVerse <span className="text-slate-400 font-normal">Triage</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <Logo />
+                    </div>
                 </div>
                 <Link to="/dashboard/nurse">
                     <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors">

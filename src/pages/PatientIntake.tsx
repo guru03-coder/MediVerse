@@ -1,14 +1,16 @@
 import { motion } from 'framer-motion';
 import {
-    User, Heart, Thermometer, Activity, AlertTriangle,
+    User, Heart, Thermometer, Activity,
     Mic, Send, Hash, Calendar, FileText, Siren
 } from 'lucide-react';
 import { GridBackground } from '../components/ui/GridBackground';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Logo } from '../components/ui/Logo';
 
 export function PatientIntake() {
     const [patientId, setPatientId] = useState('');
+    const [patientName, setPatientName] = useState('');
     const [age, setAge] = useState('');
     const [gender, setGender] = useState('');
     const [preExisting, setPreExisting] = useState('');
@@ -18,7 +20,7 @@ export function PatientIntake() {
     const [temperature, setTemperature] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [result, setResult] = useState<any>(null);
+
     const navigate = useNavigate();
 
     const handleVoiceInput = () => {
@@ -37,11 +39,11 @@ export function PatientIntake() {
             risk_level: 'CRITICAL',
             sos: true,
         };
-        setResult(sosResult);
         navigate('/triage-result', {
             state: {
                 result: sosResult,
                 patientId: patientId || 'EMERGENCY',
+                patientName: patientName || 'Unknown',
                 vitals: { bp: bloodPressure, hr: heartRate, temp: temperature }
             }
         });
@@ -52,10 +54,12 @@ export function PatientIntake() {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch('http://localhost:8000/predict', {
+            const response = await fetch('/predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    Patient_ID: patientId,
+                    Name: patientName,
                     Age: parseInt(age),
                     'Blood Pressure': bloodPressure,
                     'Heart Rate': parseInt(heartRate),
@@ -65,22 +69,22 @@ export function PatientIntake() {
                 }),
             });
             const data = await response.json();
-            setResult(data);
             navigate('/triage-result', {
                 state: {
                     result: data,
                     patientId,
+                    patientName,
                     vitals: { bp: bloodPressure, hr: heartRate, temp: temperature }
                 }
             });
         } catch (error) {
             console.error('Prediction failed:', error);
             const errorResult = { risk_level: 'ERROR', error: 'Could not connect to prediction service' };
-            setResult(errorResult);
             navigate('/triage-result', {
                 state: {
                     result: errorResult,
                     patientId,
+                    patientName,
                     vitals: { bp: bloodPressure, hr: heartRate, temp: temperature }
                 }
             });
@@ -102,13 +106,7 @@ export function PatientIntake() {
         visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.25, 0.4, 0.25, 1] as any } },
     };
 
-    const riskColors: any = {
-        High: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-100 text-red-800' },
-        Medium: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-800' },
-        Low: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-800' },
-        CRITICAL: { bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-800', badge: 'bg-red-200 text-red-900' },
-        ERROR: { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700', badge: 'bg-slate-100 text-slate-800' },
-    };
+
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-medical-blue-100 flex flex-col overflow-hidden relative">
@@ -126,10 +124,9 @@ export function PatientIntake() {
                 className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-md border-b border-slate-200/50 px-6 py-4 flex items-center justify-between"
             >
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-medical-blue-600 rounded-lg flex items-center justify-center text-white font-bold">M</div>
-                    <span className="font-bold text-lg tracking-tight text-slate-800">
-                        MediVerse <span className="text-slate-400 font-normal">Hospitals</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <Logo />
+                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                     <span className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-slate-500 text-sm">
@@ -184,6 +181,19 @@ export function PatientIntake() {
                                                 placeholder="Patient ID"
                                                 value={patientId}
                                                 onChange={(e) => setPatientId(e.target.value)}
+                                                required
+                                                className="w-full bg-white/80 border border-slate-200 rounded-xl px-10 py-3 text-slate-800 focus:outline-none focus:border-medical-blue-500 focus:ring-1 focus:ring-medical-blue-500 transition-all placeholder:text-slate-400"
+                                            />
+                                        </div>
+
+                                        {/* Patient Name */}
+                                        <div className="relative group">
+                                            <User className="absolute left-3 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-medical-blue-500 transition-colors" />
+                                            <input
+                                                type="text"
+                                                placeholder="Patient Name"
+                                                value={patientName}
+                                                onChange={(e) => setPatientName(e.target.value)}
                                                 required
                                                 className="w-full bg-white/80 border border-slate-200 rounded-xl px-10 py-3 text-slate-800 focus:outline-none focus:border-medical-blue-500 focus:ring-1 focus:ring-medical-blue-500 transition-all placeholder:text-slate-400"
                                             />

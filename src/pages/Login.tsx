@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { GridBackground } from '../components/ui/GridBackground';
 import { GlowingOrb } from '../components/ui/GlowingOrb';
 import { VitalButton } from '../components/ui/VitalButton';
+import { Logo } from '../components/ui/Logo';
 
 export function Login() {
     return (
@@ -22,9 +23,8 @@ export function Login() {
 
                 {/* Header */}
                 <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-20 pointer-events-none">
-                    <Link to="/" className="pointer-events-auto flex items-center gap-2 text-slate-600 hover:text-medical-blue-600 transition-colors">
-                        <span className="font-bold tracking-tight">MediVerse</span>
-                        <span className="text-xs text-slate-400">Secure Portal</span>
+                    <Link to="/" className="pointer-events-auto hover:opacity-80 transition-opacity">
+                        <Logo />
                     </Link>
                 </div>
 
